@@ -1,0 +1,24 @@
+# Refer https://docs.halo.run/developer-guide/plugin/basics/manifest
+
+apiVersion: plugin.halo.run/v1alpha1
+kind: Plugin
+metadata:
+  # The name defines how the plugin is invoked, A unique name
+  name: summaraidGPT
+spec:
+  enabled: true
+  requires: ">=2.22.0"
+  author:
+    name: Handsome
+    website: https://lik.cc
+  logo: static/icon.svg
+  settingName: plugin-summaraidGPT-settings
+  configMapName: plugin-summaraidGPT-configMap
+  homepage: https://lik.cc
+  repo: https://github.com/acanyo/halo-plugin-summaraidGPT
+  issues: https://www.lik.cc/subject/subject-brhugeis
+  displayName: "智阅GPT-智能AI助手"
+  description: "AI摘要|AI对话|AI创作|AI润色|AI标题|标签生成，一站式焕新内容生产力。"
+  license:
+    - name: "GPL-3.0"
+      url: "https://github.com/halo-dev/plugin-starter/blob/main/LICENSE"

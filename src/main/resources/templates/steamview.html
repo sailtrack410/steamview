@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Steam View - 游戏时长统计</title>
+    <!-- 引入插件样式 -->
+    <link rel="stylesheet" type="text/css" th:href="@{/plugins/steamview/assets/index.css(version=${version})}" />
+</head>
+<body id="steamview-page">
+    <div class="steam-view-container">
+        <!-- 页面头部 -->
+        <header class="page-header">
+            <h1 class="page-title">Steam 游戏统计</h1>
+            <p class="page-subtitle">游戏时长统计</p>
+        </header>
+
+        <!-- 控制栏 -->
+        <div class="controls-bar">
+            <div class="sort-selector">
+                <label for="sort-select">排序方式:</label>
+                <select id="sort-select" class="sort-select">
+                    <option value="twoWeekTime">两周时长</option>
+                    <option value="totalTime">总时长</option>
+                    <option value="name">游戏名称</option>
+                    <option value="lastPlayed">最近游玩</option>
+                </select>
+            </div>
+            <div class="refresh-btn" id="refresh-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6"></path>
+                    <path d="M1 20v-6h6"></path>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+                <span>刷新数据</span>
+            </div>
+        </div>
+
+        <!-- 加载状态 -->
+        <div class="loading-container" id="loading-container">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">正在加载游戏数据...</p>
+        </div>
+
+        <!-- 错误状态 -->
+        <div class="error-container" id="error-container" style="display: none;">
+            <div class="error-icon">⚠️</div>
+            <p class="error-message" id="error-message">加载失败</p>
+            <button class="retry-btn" id="retry-btn">重试</button>
+        </div>
+
+        <!-- 游戏卡片网格 -->
+        <div class="game-grid" id="game-grid" style="display: none;">
+            <!-- 游戏卡片将通过 JavaScript 动态生成 -->
+        </div>
+
+        <!-- 统计信息 -->
+        <div class="stats-summary" id="stats-summary" style="display: none;">
+            <div class="stat-item">
+                <span class="stat-label">游戏总数:</span>
+                <span class="stat-value" id="total-games">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">总游戏时长:</span>
+                <span class="stat-value" id="total-playtime">0 小时</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">两周游戏时长:</span>
+                <span class="stat-value" id="two-week-playtime">0 小时</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入插件 JS -->
+    <script type="text/javascript" th:src="@{/plugins/steamview/assets/main.js(version=${version})}"></script>
+</body>
+</html>

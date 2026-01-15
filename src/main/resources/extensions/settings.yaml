@@ -1,0 +1,103 @@
+apiVersion: v1alpha1
+kind: Setting
+metadata:
+  name: pluginsteamview-settings
+spec:
+  forms:
+    - group: base
+      label: 基本设置
+      formSchema:
+        - $formkit: text
+          label: Steam API Key
+          name: steamApiKey
+          validation: required
+          help: 在 https://steamcommunity.com/dev/apikey 获取您的 API Key
+        - $formkit: text
+          label: Steam ID
+          name: steamId
+          validation: required
+          help: 您的 Steam ID（17位数字），访问 https://steamid.io/ 查询
+        - $el: div
+          attrs:
+            class: formkit-actions
+          children:
+            - $el: script
+              attrs:
+                type: text/javascript
+              children: |
+                async function testSteamConnection() {
+                  const btn = document.getElementById('testSteamBtn');
+                  const btnText = document.getElementById('testSteamBtnText');
+                  btn.disabled = true;
+                  const oldText = btnText.textContent;
+                  btnText.textContent = '测试中...';
+                  try {
+                    const response = await fetch('/apis/steamview/test', {
+                      method: 'GET',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                    });
+                    if (!response.ok) {
+                      throw new Error('测试失败');
+                    }
+                    const result = await response.json();
+                    if (result.success) {
+                      alert(result.message || '连接成功！');
+                    } else {
+                      alert(result.message || '连接失败！');
+                    }
+                  } catch (err) {
+                    alert('测试失败：' + err.message);
+                  } finally {
+                    btn.disabled = false;
+                    btnText.textContent = oldText;
+                  }
+                }
+            - $el: button
+              attrs:
+                type: button
+                id: testSteamBtn
+                onclick: "testSteamConnection()"
+                class: "btn-md btn-primary btn flex items-center gap-2"
+              children:
+                - $el: span
+                  attrs:
+                    id: testSteamBtnIcon
+                    class: "hidden"
+                - $el: span
+                  attrs:
+                    id: testSteamBtnText
+                  children: 测试 Steam 连接
+            - $el: div
+              attrs:
+                class: "formkit-help text-xs text-gray-500"
+                style:
+                  marginTop: "8px"
+              children: "点击测试按钮验证配置是否正确"
+        - $formkit: select
+          name: refreshInterval
+          label: 数据刷新频率
+          value: 24
+          options:
+            - label: 1 小时
+              value: 1
+            - label: 6 小时
+              value: 6
+            - label: 24 小时
+              value: 24
+          help: 设置游戏数据的自动刷新频率
+    - group: advanced
+      label: 游戏过滤
+      formSchema:
+        - $formkit: list
+          name: hiddenGames
+          label: 隐藏的游戏
+          addLabel: 添加游戏
+          help: 在这里添加要隐藏的游戏 App ID，这些游戏不会在前端页面显示
+          itemType: string
+          children:
+            - $formkit: text
+              index: "$index"
+              validation: required
+              placeholder: 请输入游戏 App ID
