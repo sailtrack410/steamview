@@ -10,17 +10,17 @@ spec:
   version: "1.0.0"
   requires: ">=2.22.0"
   author:
-    name: miku_0410
-    website: https://github.com/miku_0410
-  logo: logo.png
-  homepage: https://github.com/miku_0410/steam-view#readme
-  repo: https://github.com/miku_0410/steam-view
-  issues: https://github.com/miku_0410/steam-view/issues
+    name: sailtrack410
+    website: https://github.com/sailtrack410
+  logo: logo.svg
+  homepage: hhttps://github.com/sailtrack410/steam-view#readme
+  repo: https://github.com/sailtrack410/steam-view
+  issues: https://github.com/sailtrack410/steam-view/issues
   settingName: pluginsteamview-settings
   configMapName: pluginsteamview-configmap
   displayName: "steam-view"
-  description: "steam-view - 个性化展示个人Steam游戏时长的插件"
+  description: "个性化展示个人Steam游戏时长的插件"
   license:
     - name: "GPL-3.0"
-      url: "https://github.com/miku_0410/steam-view/blob/main/LICENSE"
+      url: "https://github.com/sailtrack410/steam-view/blob/main/LICENSE"
 # trigger rebuild
