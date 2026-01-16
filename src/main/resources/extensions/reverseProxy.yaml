@@ -6,3 +6,6 @@ rules:
   - path: /static/**
     file:
       directory: static
+  - path: /console/**
+    file:
+      directory: console

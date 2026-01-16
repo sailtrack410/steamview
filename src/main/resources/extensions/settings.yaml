@@ -32,7 +32,7 @@ spec:
                   const oldText = btnText.textContent;
                   btnText.textContent = '测试中...';
                   try {
-                    const response = await fetch('/apis/steamview/test', {
+                    const response = await fetch('/steamview/test', {
                       method: 'GET',
                       headers: {
                         'Content-Type': 'application/json',
@@ -43,16 +43,78 @@ spec:
                     }
                     const result = await response.json();
                     if (result.success) {
-                      alert(result.message || '连接成功！');
+                      // 成功提示
+                      showNotification('success', result.message || '连接成功！');
                     } else {
-                      alert(result.message || '连接失败！');
+                      // 失败提示
+                      showNotification('error', result.message || '连接失败！');
                     }
                   } catch (err) {
-                    alert('测试失败：' + err.message);
+                    showNotification('error', '测试失败：' + err.message);
                   } finally {
                     btn.disabled = false;
                     btnText.textContent = oldText;
                   }
+                }
+
+                function showNotification(type, message) {
+                  // 创建通知元素
+                  const notification = document.createElement('div');
+                  notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 12px 24px;
+                    background: ${type === 'success' ? 'linear-gradient(135deg, #67c23a, #85ce61)' : 'linear-gradient(135deg, #f56c6c, #f78989)'};
+                    color: white;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    font-size: 14px;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                    z-index: 10000;
+                    animation: slideIn 0.3s ease;
+                    max-width: 400px;
+                  `;
+                  notification.textContent = message;
+                  
+                  // 添加动画样式
+                  if (!document.getElementById('notification-style')) {
+                    const style = document.createElement('style');
+                    style.id = 'notification-style';
+                    style.textContent = `
+                      @keyframes slideIn {
+                        from {
+                          transform: translateX(100%);
+                          opacity: 0;
+                        }
+                        to {
+                          transform: translateX(0);
+                          opacity: 1;
+                        }
+                      }
+                      @keyframes slideOut {
+                        from {
+                          transform: translateX(0);
+                          opacity: 1;
+                        }
+                        to {
+                          transform: translateX(100%);
+                          opacity: 0;
+                        }
+                      }
+                    `;
+                    document.head.appendChild(style);
+                  }
+                  
+                  document.body.appendChild(notification);
+                  
+                  // 3秒后移除
+                  setTimeout(() => {
+                    notification.style.animation = 'slideOut 0.3s ease';
+                    setTimeout(() => {
+                      document.body.removeChild(notification);
+                    }, 300);
+                  }, 3000);
                 }
             - $el: button
               attrs:

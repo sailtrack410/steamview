@@ -52,7 +52,17 @@ public class SteamViewConfigService {
      */
     public Mono<Integer> getRefreshInterval() {
         return getSettingValue("refreshInterval")
-            .map(Integer::parseInt)
+            .map(value -> {
+                if (value == null || value.isEmpty()) {
+                    return 24;
+                }
+                try {
+                    return Integer.parseInt(value);
+                } catch (NumberFormatException e) {
+                    log.error("解析刷新频率失败: {}", value, e);
+                    return 24;
+                }
+            })
             .defaultIfEmpty(24);
     }
 

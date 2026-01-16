@@ -2,7 +2,7 @@
 
 一个用于 Halo 博客系统的 Steam 游戏库展示插件，可以展示用户的 Steam 游戏数据、游戏时长统计等信息。
 
-![Steam View](logo.svg)
+![Steam View](./src/main/resources/logo.svg)
 
 ## ✨ 功能特性
 

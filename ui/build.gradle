@@ -17,6 +17,18 @@ tasks.register('pnpmBuild', PnpmTask) {
     outputs.dir(layout.buildDirectory.dir('dist'))
 }
 
+tasks.register('pnpmBuildFrontend', PnpmTask) {
+    group = 'build'
+    description = 'Build the frontend UI using pnpm'
+    args = ['build:frontend']
+    dependsOn tasks.named('pnpmInstall')
+    inputs.dir(layout.projectDirectory.dir('src'))
+    inputs.files(fileTree(
+        dir: layout.projectDirectory,
+        includes: ['*.cjs', '*.ts', '*.js', '*.json', '*.yaml']))
+    outputs.dir(layout.buildDirectory.dir('frontend'))
+}
+
 tasks.register('pnpmCheck', PnpmTask) {
     group = 'verification'
     description = 'Run unit tests for the UI project using pnpm'
@@ -30,4 +42,5 @@ tasks.named('check') {
 
 tasks.named('assemble') {
     dependsOn tasks.named('pnpmBuild')
+    dependsOn tasks.named('pnpmBuildFrontend')
 }

@@ -2,11 +2,14 @@ package www.sailtrack.cn.steamview.controller;
 
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import www.sailtrack.cn.steamview.service.GameCacheService;
 import www.sailtrack.cn.steamview.service.SteamApiService;
 import www.sailtrack.cn.steamview.service.SteamViewConfigService;
 
@@ -26,12 +29,13 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-@RequestMapping("/apis/steamview")
+@RequestMapping("/steamview")
 @AllArgsConstructor
 public class SteamViewController {
 
     private final SteamApiService steamApiService;
     private final SteamViewConfigService configService;
+    private final GameCacheService gameCacheService;
 
     /**
      * 获取游戏数据
@@ -39,8 +43,34 @@ public class SteamViewController {
      * @return 游戏数据列表
      */
     @GetMapping("/games")
+    @PreAuthorize("permitAll()")
     public Mono<Map<String, Object>> getGames() {
         log.info("开始获取游戏数据");
+
+        return configService.getRefreshInterval()
+            .flatMap(refreshInterval -> {
+                // 先尝试从缓存获取
+                return gameCacheService.getCachedGames(refreshInterval)
+                    .flatMap(cachedData -> {
+                        if (cachedData != null) {
+                            log.info("使用缓存数据");
+                            return Mono.just(cachedData);
+                        }
+                        // 缓存不存在或过期，从 Steam API 获取
+                        return fetchFromSteamApi();
+                    })
+                    .switchIfEmpty(fetchFromSteamApi());
+            })
+            .doOnError(e -> log.error("获取游戏数据失败: {}", e.getMessage()));
+    }
+
+    /**
+     * 从 Steam API 获取游戏数据
+     *
+     * @return 游戏数据
+     */
+    private Mono<Map<String, Object>> fetchFromSteamApi() {
+        log.info("从 Steam API 获取游戏数据");
 
         return configService.getSteamApiKey()
             .flatMap(apiKey -> {
@@ -61,15 +91,15 @@ public class SteamViewController {
                         ).flatMap(tuple -> {
                             List<Map<String, Object>> ownedGames = tuple.getT1();
                             List<Map<String, Object>> recentlyPlayedGames = tuple.getT2();
-                            
+
                             // 合并数据：以拥有的游戏为基础，补充最近游玩的游戏（包括家庭共享）
                             Map<String, Map<String, Object>> allGamesMap = new HashMap<>();
-                            
+
                             // 先添加拥有的游戏
                             for (Map<String, Object> game : ownedGames) {
                                 allGamesMap.put((String) game.get("appId"), game);
                             }
-                            
+
                             // 补充最近游玩的游戏（包括家庭共享游戏）
                             for (Map<String, Object> game : recentlyPlayedGames) {
                                 String appId = (String) game.get("appId");
@@ -77,15 +107,21 @@ public class SteamViewController {
                                     allGamesMap.put(appId, game);
                                 }
                             }
-                            
+
                             List<Map<String, Object>> allGames = new ArrayList<>(allGamesMap.values());
                             log.info("合并后共 {} 个游戏（包括家庭共享）", allGames.size());
-                            
-                            return processGames(allGames);
+
+                            return processGames(allGames)
+                                .flatMap(result -> {
+                                    // 添加更新时间戳
+                                    result.put("lastUpdated", Instant.now().toString());
+                                    // 保存到缓存
+                                    return gameCacheService.saveCachedGames(result)
+                                        .thenReturn(result);
+                                });
                         });
                     });
-            })
-            .doOnError(e -> log.error("获取游戏数据失败: {}", e.getMessage()));
+            });
     }
 
     /**
@@ -94,6 +130,7 @@ public class SteamViewController {
      * @return 测试结果
      */
     @GetMapping("/test")
+    @PreAuthorize("permitAll()")
     public Mono<Map<String, Object>> testConnection() {
         log.info("开始测试 Steam API 连接");
 
@@ -132,6 +169,32 @@ public class SteamViewController {
                                 return Mono.just(result);
                             });
                     });
+            });
+    }
+
+    /**
+     * 手动刷新游戏数据
+     *
+     * @return 刷新结果
+     */
+    @PostMapping("/refresh")
+    @PreAuthorize("permitAll()")
+    public Mono<Map<String, Object>> refreshGames() {
+        log.info("手动刷新游戏数据");
+
+        return fetchFromSteamApi()
+            .flatMap(result -> {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", true);
+                response.put("message", "刷新成功");
+                response.put("data", result);
+                return Mono.just(response);
+            })
+            .onErrorResume(e -> {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("message", "刷新失败: " + e.getMessage());
+                return Mono.just(response);
             });
     }
 
