@@ -140,4 +140,93 @@ public class SteamApiService {
     public String getGameCoverUrl(String appId) {
         return String.format("https://cdn.cloudflare.steamstatic.com/steam/apps/%s/header.jpg", appId);
     }
+
+    /**
+     * 获取最近游玩的游戏（包括家庭共享游戏）
+     *
+     * @param apiKey  Steam API Key
+     * @param steamId Steam ID
+     * @return 最近游玩的游戏列表
+     */
+    public Mono<List<Map<String, Object>>> getRecentlyPlayedGames(String apiKey, String steamId) {
+        String url = String.format(
+            "https://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v0001/?key=%s&steamid=%s&format=json",
+            apiKey, steamId
+        );
+
+        log.info("获取最近游玩的游戏: URL={}", url);
+
+        return webClient.get()
+            .uri(url)
+            .retrieve()
+            .bodyToMono(String.class)
+            .map(response -> {
+                try {
+                    JsonNode root = objectMapper.readTree(response);
+                    JsonNode responseNode = root.path("response");
+                    JsonNode gamesNode = responseNode.path("games");
+
+                    List<Map<String, Object>> games = new ArrayList<>();
+                    for (JsonNode gameNode : gamesNode) {
+                        Map<String, Object> game = new HashMap<>();
+                        game.put("appId", gameNode.path("appid").asText());
+                        game.put("name", gameNode.path("name").asText());
+                        game.put("imgIconUrl", gameNode.path("img_icon_url").asText());
+                        game.put("imgLogoUrl", gameNode.path("img_logo_url").asText());
+                        game.put("playtimeForever", gameNode.path("playtime_forever").asLong());
+                        game.put("playtime2weeks", gameNode.path("playtime_2weeks").asLong());
+                        game.put("rtimeLastPlayed", gameNode.path("rtime_last_played").asLong());
+                        games.add(game);
+                    }
+
+                    log.info("获取到 {} 个最近游玩的游戏", games.size());
+                    return games;
+                } catch (Exception e) {
+                    log.error("解析最近游玩游戏响应失败", e);
+                    throw new RuntimeException("Failed to parse recently played games response", e);
+                }
+            })
+            .doOnError(e -> log.error("获取最近游玩游戏失败: {}", e.getMessage()));
+    }
+
+    /**
+     * 获取游戏的本地化名称（中文）
+     *
+     * @param appId 游戏 App ID
+     * @return 本地化名称，失败返回 null
+     */
+    public Mono<String> getLocalizedGameName(String appId) {
+        String url = String.format(
+            "https://store.steampowered.com/api/appdetails?appids=%s&l=schinese",
+            appId
+        );
+
+        return webClient.get()
+            .uri(url)
+            .retrieve()
+            .bodyToMono(String.class)
+            .map(response -> {
+                try {
+                    JsonNode root = objectMapper.readTree(response);
+                    JsonNode appNode = root.path(appId);
+                    
+                    if (!appNode.has("success") || !appNode.path("success").asBoolean()) {
+                        return null;
+                    }
+                    
+                    JsonNode dataNode = appNode.path("data");
+                    String name = dataNode.path("name").asText();
+                    
+                    log.debug("获取游戏 {} 的本地化名称: {}", appId, name);
+                    return name;
+                } catch (Exception e) {
+                    log.error("解析游戏 {} 的本地化名称失败", appId, e);
+                    return null;
+                }
+            })
+            .onErrorResume(e -> {
+                log.error("获取游戏 {} 的本地化名称失败: {}", appId, e.getMessage());
+                return Mono.just(null);
+            });
+    }
 }

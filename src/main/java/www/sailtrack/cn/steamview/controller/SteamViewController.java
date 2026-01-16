@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import www.sailtrack.cn.steamview.service.SteamApiService;
 import www.sailtrack.cn.steamview.service.SteamViewConfigService;
@@ -53,8 +54,35 @@ public class SteamViewController {
                             return Mono.error(new RuntimeException("Steam ID 未配置"));
                         }
 
-                        return steamApiService.getOwnedGames(apiKey, steamId)
-                            .flatMap(this::processGames);
+                        // 同时获取拥有的游戏和最近游玩的游戏（包括家庭共享）
+                        return Mono.zip(
+                            steamApiService.getOwnedGames(apiKey, steamId),
+                            steamApiService.getRecentlyPlayedGames(apiKey, steamId)
+                        ).flatMap(tuple -> {
+                            List<Map<String, Object>> ownedGames = tuple.getT1();
+                            List<Map<String, Object>> recentlyPlayedGames = tuple.getT2();
+                            
+                            // 合并数据：以拥有的游戏为基础，补充最近游玩的游戏（包括家庭共享）
+                            Map<String, Map<String, Object>> allGamesMap = new HashMap<>();
+                            
+                            // 先添加拥有的游戏
+                            for (Map<String, Object> game : ownedGames) {
+                                allGamesMap.put((String) game.get("appId"), game);
+                            }
+                            
+                            // 补充最近游玩的游戏（包括家庭共享游戏）
+                            for (Map<String, Object> game : recentlyPlayedGames) {
+                                String appId = (String) game.get("appId");
+                                if (!allGamesMap.containsKey(appId)) {
+                                    allGamesMap.put(appId, game);
+                                }
+                            }
+                            
+                            List<Map<String, Object>> allGames = new ArrayList<>(allGamesMap.values());
+                            log.info("合并后共 {} 个游戏（包括家庭共享）", allGames.size());
+                            
+                            return processGames(allGames);
+                        });
                     });
             })
             .doOnError(e -> log.error("获取游戏数据失败: {}", e.getMessage()));
@@ -115,7 +143,7 @@ public class SteamViewController {
      */
     private Mono<Map<String, Object>> processGames(List<Map<String, Object>> rawGames) {
         return configService.getHiddenGames()
-            .map(hiddenGames -> {
+            .flatMapMany(hiddenGames -> {
                 List<Map<String, Object>> games = new ArrayList<>();
                 long totalTime = 0;
                 long twoWeekTime = 0;
@@ -131,10 +159,10 @@ public class SteamViewController {
                     long playtimeForever = (Long) rawGame.getOrDefault("playtimeForever", 0L);
                     long playtime2weeks = (Long) rawGame.getOrDefault("playtime2weeks", 0L);
 
-                    // 跳过没有游玩时间的游戏
-                    if (playtimeForever == 0 && playtime2weeks == 0) {
-                        continue;
-                    }
+                    // 移除过滤条件，显示所有游戏（包括家庭库和没玩过的）
+                    // if (playtimeForever == 0 && playtime2weeks == 0) {
+                    //     continue;
+                    // }
 
                     totalTime += playtimeForever;
                     twoWeekTime += playtime2weeks;
@@ -160,6 +188,29 @@ public class SteamViewController {
 
                     games.add(game);
                 }
+
+                // 为每个游戏获取本地化名称（并发请求，限制并发数为 10）
+                return Flux.fromIterable(games)
+                    .flatMap(game -> {
+                        String appId = (String) game.get("appId");
+                        return steamApiService.getLocalizedGameName(appId)
+                            .map(localizedName -> {
+                                if (localizedName != null && !localizedName.isEmpty()) {
+                                    game.put("name", localizedName);
+                                }
+                                return game;
+                            })
+                            .onErrorResume(e -> Mono.just(game)); // 失败时保留原名称
+                    }, 10); // 限制并发数为 10
+            })
+            .collectList()
+            .map(games -> {
+                long totalTime = games.stream()
+                    .mapToLong(g -> (Long) g.get("totalTime"))
+                    .sum();
+                long twoWeekTime = games.stream()
+                    .mapToLong(g -> (Long) g.get("twoWeekTime"))
+                    .sum();
 
                 // 计算百分比
                 for (Map<String, Object> game : games) {

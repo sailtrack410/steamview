@@ -16,7 +16,7 @@ spec:
           label: Steam ID
           name: steamId
           validation: required
-          help: 您的 Steam ID（17位数字），访问 https://steamid.io/ 查询
+          help: 您的 Steam ID（17位数字），Steam个人主页URL地址中的数字
         - $el: div
           attrs:
             class: formkit-actions

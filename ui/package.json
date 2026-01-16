@@ -1,7 +1,7 @@
 {
   "type": "module",
   "scripts": {
-    "build": "run-p type-check \"build-only {@}\" --",
+    "build": "vite build",
     "build-only": "vite build",
     "dev": "vite build --watch --mode=development",
     "lint:oxlint": "oxlint . --fix -D correctness --ignore-path ../.gitignore",

@@ -8,4 +8,4 @@ import './assets/steamview.css'
 const app = createApp(HomeView)
 
 // 挂载应用
-app.mount('#app')
+app.mount('#steamview-page')
